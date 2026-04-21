@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'pantallas/inicio/pantalla_inicio.dart';
+import 'pantallas/seleccion_area.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -30,7 +31,11 @@ class ExaminApp extends StatelessWidget {
       ),
       // Configuración de idioma (simplificada para este paso)
       locale: const Locale('es', 'ES'),
-      home: const PantallaInicio(),
+      initialRoute: '/area',
+      routes: {
+        '/inicio': (context) => const PantallaInicio(),
+        '/area': (context) => const SeleccionArea(),
+      },
     );
   }
 }
