@@ -18,6 +18,10 @@ class _SeleccionAreaState extends State<SeleccionArea> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+       appBar: AppBar(
+        title: const Text('pantalla inicio'),
+        centerTitle: true,
+      ),
       body: Column(
         children: [
           Expanded(
@@ -84,7 +88,7 @@ class _SeleccionAreaState extends State<SeleccionArea> {
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: () {
-                  // Navegación se implementará en pasos futuros
+                  //aquí se implementará la lógica para continuar con la selección del área y avanzar a la siguiente pantalla
                 },
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),

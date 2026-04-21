@@ -31,7 +31,7 @@ class ExaminApp extends StatelessWidget {
       ),
       // Configuración de idioma (simplificada para este paso)
       locale: const Locale('es', 'ES'),
-      initialRoute: '/area',
+      initialRoute: '/inicio',
       routes: {
         '/inicio': (context) => const PantallaInicio(),
         '/area': (context) => const SeleccionArea(),
