@@ -93,7 +93,7 @@ class _PantallaPuntajeFijoState extends State<PantallaPuntajeFijo> {
                 child: ElevatedButton(
                   onPressed: _isFormValid() ? () {
                     if (_formKey.currentState!.validate()) {
-                      // Navigator.pushNamed(context, '/siguiente');
+                      Navigator.pushNamed(context, '/escaneo');
                     }
                   } : null,
                   style: ElevatedButton.styleFrom(

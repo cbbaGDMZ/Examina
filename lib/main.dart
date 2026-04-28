@@ -7,6 +7,8 @@ import 'pantallas/puntaje.dart';
 import 'pantallas/puntaje_fijo.dart';
 import 'pantallas/puntaje_variado.dart';
 
+import 'pantallas/escaneo.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('es_ES', null);
@@ -32,7 +34,6 @@ class ExaminApp extends StatelessWidget {
         useMaterial3: true,
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
-      // Configuración de idioma (simplificada para este paso)
       locale: const Locale('es', 'ES'),
       initialRoute: '/inicio',
       routes: {
@@ -41,6 +42,7 @@ class ExaminApp extends StatelessWidget {
         '/puntaje': (context) => const PantallaPuntaje(),
         '/puntaje_fijo': (context) => const PantallaPuntajeFijo(),
         '/puntaje_variado': (context) => const PantallaPuntajeVariado(),
+        '/escaneo': (context) => const PantallaEscaneo(),
       },
     );
   }

@@ -4,6 +4,8 @@ class HojaPatron {
   final int cantidadPreguntas;
   final bool esPuntajeFijo;
   final double puntajeMaximo;
+  final String? rutaImagen;
+  final bool validada;
 
   HojaPatron({
     this.id,
@@ -11,6 +13,8 @@ class HojaPatron {
     required this.cantidadPreguntas,
     required this.esPuntajeFijo,
     required this.puntajeMaximo,
+    this.rutaImagen,
+    this.validada = false,
   });
 
   Map<String, dynamic> aMapa() {
