@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'escaneo.dart';
 
 class PantallaPuntajeFijo extends StatefulWidget {
   const PantallaPuntajeFijo({super.key});
@@ -93,7 +94,16 @@ class _PantallaPuntajeFijoState extends State<PantallaPuntajeFijo> {
                 child: ElevatedButton(
                   onPressed: _isFormValid() ? () {
                     if (_formKey.currentState!.validate()) {
-                      Navigator.pushNamed(context, '/escaneo');
+                      final preguntas = int.tryParse(_cantidadPreguntasController.text) ?? 20;
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => PantallaEscaneo(
+                            tipoEscaneo: 'examen',
+                            cantidadPreguntas: preguntas,
+                          ),
+                        ),
+                      );
                     }
                   } : null,
                   style: ElevatedButton.styleFrom(

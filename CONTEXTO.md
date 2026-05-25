@@ -1,56 +1,48 @@
-# Contexto - Examina
+# Contexto - Examina (MODO DEMO)
 
-## Qué hace la app
-Escanea exámenes de opción múltiple (burbujas A, B, C, D, E), compara las respuestas con una hoja patrón y calcula la nota automáticamente.
+## Objetivo de la Demo
+Obtener un pipeline funcional de principio a fin: Cargar imagen -> Procesar -> Detectar -> Mostrar resultado.
 
-## Flujo de pantallas
-1. Inicio → botón "Iniciar corrección"
-2. Seleccionar área (materia, ej: Tecnología, Medicina)
-3. Tipo de puntaje: Fijo o Variado
-4. Configurar puntaje (cantidad de preguntas y valor por pregunta)
-5. Escanear hoja patrón (hoja con todas las respuestas correctas)
-6. Escanear exámenes (uno por uno, muestra contador)
-7. Ver resultados (nota final, correctas, incorrectas, detalle por pregunta)
-8. Pantalla de error de lectura (cuando no puede leer bien la hoja)
+## Estado Actual
+- **UI básica**: Navegación funcional entre inicio, configuración y escaneo.
+- **Scanner**: Carga de archivos y procesamiento en Isolate implementado.
+- **Procesamiento**: Rotación y normalización a 800x1200 funcional. (En depuración: problema de imagen negra).
+- **OMR**: Motor real con layout hardcodeado e intensidad de píxeles implementado (Fase 2).
 
-## Reglas de negocio
-- **Puntaje fijo**: todas las preguntas valen igual (actualmente implementado)
-- **Puntaje variado**: cada pregunta tiene su propio valor (no implementado aún)
-- El puntaje total debe ser exactamente 100 puntos
-- Rango de preguntas: 20 - 100 preguntas
+---
 
-## Fase 1 - Scanner Pipeline (COMPLETADO)
-### Pipeline de procesamiento de imagen:
-1. **Escaneo**: Google ML Kit Document Scanner
-2. **Detección de marcadores**: 4 cuadrados negros en las esquinas
-3. **Corrección de perspectiva**: Rotación y pérdida
-4. **Validación geométrica**: Verifica que los 4 marcadores estén en las esquinas
-5. **Quality check**: Valida oscuridad, brillo, contraste
-6. **Detección de enfoque**: Detecta imagen borrosa
-7. **Normalización**: Convierte a 800x1200 pixeles
-8. **Re-scaneo**: Hasta 3 intentos si falla
+## PLAN REAL PARA LA DEMO
 
-### Hoja patrón
-- 4 marcadores negros en las 4 esquinas
-- Alto contraste (negro puro)
-- Siempre en la misma posición
-- Margen suficiente para que la cámara no corte los marcadores
+### FASE 1 — Scanner Confiable (EN PROCESO)
+- [x] Quitar validaciones agresivas (oscuridad/brillo ya no bloquean).
+- [ ] Solucionar problema de visualización (imagen negra).
+- [x] Forzar normalización (Grayscale + Redimensionado).
 
-## Tecnologías
-- **Flutter** (Android/iOS/Web)
-- **google_mlkit_document_scanner**: Escaneo de documentos
-- **image package**: Procesamiento de imagen
-- **sqflite**: Base de datos local (planea migrar a Isar)
-- **flutter_riverpod**: State management
+### FASE 2 — OMR Mínimo Viable (COMPLETADO)
+- [x] Layout Hardcodeado (Coordenadas fijas para 20 preguntas).
+- [x] Lectura de intensidad (Promedio de píxeles por burbuja).
+- [x] Decisión simple (Opción más oscura = respuesta).
 
-## Estado actual
-- UI básica funcionando con navegación
-- Pantalla puntaje fijo navega al escáner
-- Servicio de procesamiento de imagen completo
-- OMR simulado (no detecta respuestas reales todavía)
+### FASE 3 — Corrección Básica (PRÓXIMO)
+- [ ] Hardcodear respuestas correctas (Lista de referencia).
+- [ ] Comparación directa (Correctas vs Detectadas).
+- [ ] Cálculo de puntaje simple (Aciertos / Total * 100).
 
-## Pendiente
-- Detección real de respuestas (burbujas/OMR)
-- Comparación automática con hoja patrón
-- Integración con base de datos
-- Migración a Isar
+### FASE 4 — Pantalla de Resultado Mínima
+- [ ] Mostrar lista de respuestas detectadas.
+- [ ] Mostrar respuestas correctas.
+- [ ] Mostrar puntaje final destacado.
+
+### FASE 5 — Flujo Completo
+- [ ] Asegurar que el paso de datos entre pantallas sea fluido y sin errores.
+
+---
+
+## Lo que se ignora para la Demo
+- Base de datos (Persistencia).
+- Cámara real (Se usará carga de archivos controlados).
+- UX perfecto y diseño detallado.
+- Puntaje variado y configuraciones complejas.
+
+## Criterio de Éxito
+"Funciona de principio a fin sin romperse durante la presentación".

@@ -3,18 +3,28 @@ import 'package:google_mlkit_document_scanner/google_mlkit_document_scanner.dart
 import 'package:path_provider/path_provider.dart';
 
 class ServicioCamara {
-  final _documentScanner = DocumentScanner(
-    options: DocumentScannerOptions(
-      documentFormat: DocumentFormat.jpeg,
-      mode: ScannerMode.full,
-      pageLimit: 1,
-    ),
-  );
+  DocumentScanner? _documentScanner;
+
+  DocumentScanner get _scanner {
+    _documentScanner ??= DocumentScanner(
+      options: DocumentScannerOptions(
+        documentFormat: DocumentFormat.jpeg,
+        mode: ScannerMode.full,
+        pageLimit: 1,
+      ),
+    );
+    return _documentScanner!;
+  }
 
   /// Abre el escáner de documentos de Google ML Kit y retorna la ruta de la imagen.
   Future<String?> escanearHoja() async {
+    // Protección adicional para plataformas no soportadas (Linux/Windows/Web)
+    if (!Platform.isAndroid && !Platform.isIOS) {
+      return null;
+    }
+    
     try {
-      final result = await _documentScanner.scanDocument();
+      final result = await _scanner.scanDocument();
       if (result.images.isNotEmpty) {
         return result.images.first;
       }
@@ -41,6 +51,9 @@ class ServicioCamara {
   }
 
   void dispose() {
-    _documentScanner.close();
+    // Solo intentamos cerrar si fue inicializado y estamos en una plataforma móvil
+    if (_documentScanner != null && (Platform.isAndroid || Platform.isIOS)) {
+      _documentScanner!.close();
+    }
   }
 }

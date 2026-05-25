@@ -1,12 +1,12 @@
 import 'dart:io';
 import 'dart:math' as math;
-import 'dart:typed_data';
 import 'package:image/image.dart' as img;
 
 class ResultadoProcesamiento {
   final bool exito;
   final String? rutaImagenCorregida;
   final String? mensajeError;
+  final List<String> advertencias;
   final List<Marcador> marcadoresDetectados;
   final double? anguloRotacion;
   final MetadatosProcesamiento? metadatos;
@@ -15,6 +15,7 @@ class ResultadoProcesamiento {
     required this.exito,
     this.rutaImagenCorregida,
     this.mensajeError,
+    this.advertencias = const [],
     this.marcadoresDetectados = const [],
     this.anguloRotacion,
     this.metadatos,
@@ -55,7 +56,7 @@ class MetadatosProcesamiento {
 }
 
 class ServicioProcesamientoImagen {
-  Future<ResultadoProcesamiento> procesarHoja(String rutaImagen) async {
+  Future<ResultadoProcesamiento> procesarHoja(String rutaImagen, {String? rutaCarpetaTemporal}) async {
     try {
       final archivo = File(rutaImagen);
       if (!await archivo.exists()) {
@@ -74,91 +75,73 @@ class ServicioProcesamientoImagen {
         );
       }
 
-      final marcadores = _detectarMarcadores(imagenOriginal);
+      // 1. NORMALIZACIÓN PARA DETECCIÓN
+      // No modificamos la original aún, trabajamos sobre una copia para detectar
+      final imagenDeteccion = img.contrast(img.grayscale(imagenOriginal.clone()), contrast: 1.5);
+      
+      final advertencias = <String>[];
+
+      // 2. DETECCIÓN DE MARCADORES
+      final marcadores = _detectarMarcadores(imagenDeteccion);
 
       if (marcadores.length != 4) {
         return ResultadoProcesamiento(
           exito: false,
-          mensajeError: 'Se detectaron ${marcadores.length} marcadores, se requieren 4',
+          mensajeError: 'Se detectaron ${marcadores.length} marcadores, se requieren 4 para procesar.',
           marcadoresDetectados: marcadores,
         );
       }
 
-      if (!_validarGeometriaMarcadores(marcadores, imagenOriginal.width, imagenOriginal.height)) {
-        return ResultadoProcesamiento(
-          exito: false,
-          mensajeError: 'La geometría de los marcadores no es válida',
-          marcadoresDetectados: marcadores,
-        );
-      }
-
-      final calidadResult = _validarCalidad(imagenOriginal);
+      // 3. VALIDACIÓN DE CALIDAD (Solo informativa, nunca bloquea)
+      final calidadResult = _validarCalidad(imagenDeteccion);
       if (!calidadResult['aprobado']!) {
-        return ResultadoProcesamiento(
-          exito: false,
-          mensajeError: 'Error de calidad: ${calidadResult['mensaje']}',
-          marcadoresDetectados: marcadores,
-        );
+        advertencias.add('Calidad: ${calidadResult['mensaje']}');
       }
 
-      final enfoqueResult = _validarEnfoque(imagenOriginal);
-      if (!enfoqueResult['aprobado']!) {
-        return ResultadoProcesamiento(
-          exito: false,
-          mensajeError: 'Error de enfoque: ${enfoqueResult['mensaje']}',
-          marcadoresDetectados: marcadores,
-        );
-      }
-
+      // 4. CORRECCIÓN DE ROTACIÓN
       final angulo = _calcularAnguloRotacion(marcadores);
+      img.Image imagenProcesada = imagenOriginal.clone();
 
-      final resultadoWarp = _corregirPerspectiva(
-        imagenOriginal,
-        angulo,
+      if (angulo.abs() > 0.1) {
+        imagenProcesada = img.copyRotate(imagenOriginal, angle: angulo);
+      }
+
+      // 5. NORMALIZACIÓN FORZADA (Para la demo)
+      // Redimensionar primero
+      imagenProcesada = img.copyResize(
+        imagenProcesada,
+        width: 800,
+        height: 1200,
+        interpolation: img.Interpolation.linear,
       );
 
-      img.Image? imagenCorregida;
-      if (resultadoWarp != null) {
-        imagenCorregida = img.decodeImage(resultadoWarp);
-      }
+      // Aplicar filtros post-procesamiento mínimos para diagnóstico
+      imagenProcesada = img.grayscale(imagenProcesada);
+      // Comentamos la binarización para ver qué está pasando
+      // imagenProcesada = img.luminanceThreshold(imagenProcesada, threshold: 0.5);
 
-      img.Image? imagenNormalizada;
-      List<int>? bytesNormalizado;
-
-      if (imagenCorregida != null) {
-        imagenNormalizada = img.copyResize(
-          imagenCorregida,
-          width: 800,
-          height: 1200,
-          interpolation: img.Interpolation.linear,
-        );
-        bytesNormalizado = img.encodeJpg(imagenNormalizada, quality: 90);
-      }
-
-      final imageBytes = img.encodeJpg(imagenOriginal, quality: 90);
-      final tempDir = Directory.systemTemp;
-      final rutaSalida = '${tempDir.path}/hoja_corregida_${DateTime.now().millisecondsSinceEpoch}.jpg';
-      final bytesGuardar = bytesNormalizado ?? imageBytes;
-      final archivoSalida = File(rutaSalida);
-      await archivoSalida.writeAsBytes(bytesGuardar);
-
-      final anchoCorregido = imagenCorregida?.width.toDouble() ?? imagenOriginal.width.toDouble();
-      final altoCorregido = imagenCorregida?.height.toDouble() ?? imagenOriginal.height.toDouble();
-      final anchoFinal = imagenNormalizada?.width.toDouble() ?? anchoCorregido;
-      final altoFinal = imagenNormalizada?.height.toDouble() ?? altoCorregido;
+      // 6. GUARDADO FINAL
+      final nombreArchivo = 'hoja_procesada_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final rutaSalida = rutaCarpetaTemporal != null 
+          ? '$rutaCarpetaTemporal/$nombreArchivo'
+          : '${Directory.systemTemp.path}/$nombreArchivo';
+          
+      final bytesFinal = img.encodeJpg(imagenProcesada, quality: 85);
+      await File(rutaSalida).writeAsBytes(bytesFinal);
 
       final metadatos = MetadatosProcesamiento(
-        escalaX: bytesNormalizado != null ? 800 / imagenOriginal.width : 1.0,
-        escalaY: bytesNormalizado != null ? 1200 / imagenOriginal.height : 1.0,
+        escalaX: 800 / imagenOriginal.width,
+        escalaY: 1200 / imagenOriginal.height,
         anchoOriginal: imagenOriginal.width.toDouble(),
         altoOriginal: imagenOriginal.height.toDouble(),
-        anchoCorregido: anchoFinal,
-        altoCorregido: altoFinal,
+        anchoCorregido: 800,
+        altoCorregido: 1200,
       );
 
       return ResultadoProcesamiento(
         exito: true,
         rutaImagenCorregida: rutaSalida,
+        advertencias: advertencias,
         marcadoresDetectados: marcadores,
         anguloRotacion: angulo,
         metadatos: metadatos,
@@ -166,18 +149,18 @@ class ServicioProcesamientoImagen {
     } catch (e) {
       return ResultadoProcesamiento(
         exito: false,
-        mensajeError: 'Error al procesar imagen: $e',
+        mensajeError: 'Error crítico al procesar: $e',
       );
     }
   }
 
-  List<Marcador> _detectarMarcadores(img.Image imagen) {
-    final grayscale = img.grayscale(imagen);
-    final blurred = img.gaussianBlur(grayscale, radius: 2);
-    final edges = img.sobel(blurred);
 
-    final width = edges.width;
-    final height = edges.height;
+  List<Marcador> _detectarMarcadores(img.Image imagen) {
+    final grayscale = img.grayscale(imagen.clone());
+    final blurred = img.gaussianBlur(grayscale, radius: 2);
+
+    final width = blurred.width;
+    final height = blurred.height;
     final quarterWidth = width / 4;
     final quarterHeight = height / 4;
 
@@ -185,7 +168,7 @@ class ServicioProcesamientoImagen {
 
     for (int y = 0; y < height; y++) {
       for (int x = 0; x < width; x++) {
-        final pixel = edges.getPixel(x, y);
+        final pixel = blurred.getPixel(x, y);
         final luminance = img.getLuminance(pixel);
 
         if (luminance < 50) {
@@ -247,31 +230,6 @@ class ServicioProcesamientoImagen {
     }
   }
 
-  bool _validarGeometriaMarcadores(List<Marcador> marcadores, int ancho, int alto) {
-    if (marcadores.length != 4) return false;
-
-    final esperadoMinX = ancho * 0.02;
-    final esperadoMaxX = ancho * 0.25;
-    final esperadoMinY = alto * 0.02;
-    final esperadoMaxY = alto * 0.25;
-
-    for (final m in marcadores) {
-      final esEsquina = _esEsquina(m, ancho, alto, esperadoMinX, esperadoMaxX, esperadoMinY, esperadoMaxY);
-      if (!esEsquina) return false;
-    }
-
-    final distancias = _calcularDistancias(marcadores);
-    final distanciaPromedio = distancias.reduce((a, b) => a + b) / distancias.length;
-
-    for (final d in distancias) {
-      if (d < distanciaPromedio * 0.5 || d > distanciaPromedio * 1.5) {
-        return false;
-      }
-    }
-
-    return true;
-  }
-
   bool _esEsquina(Marcador m, int ancho, int alto, double minX, double maxX, double minY, double maxY) {
     final esIzquierda = m.x < ancho / 2;
     final esDerecha = m.x >= ancho / 2;
@@ -301,7 +259,7 @@ class ServicioProcesamientoImagen {
   }
 
   Map<String, dynamic> _validarCalidad(img.Image imagen) {
-    final grayscale = img.grayscale(imagen);
+    final grayscale = img.grayscale(imagen.clone());
 
     int pixelesOscuros = 0;
     int pixelesBrillantes = 0;
@@ -334,7 +292,7 @@ class ServicioProcesamientoImagen {
     final proporcionOscura = pixelesOscuros / totalPixeles;
     final proporcionBrillante = pixelesBrillantes / totalPixeles;
 
-    if (proporcionOscura > 0.15) {
+    if (proporcionOscura > 0.40) {
       return {'aprobado': false, 'mensaje': 'Imagen muy oscura'};
     }
     if (proporcionBrillante > 0.15) {
@@ -342,38 +300,6 @@ class ServicioProcesamientoImagen {
     }
     if (contrastePromedio < 15) {
       return {'aprobado': false, 'mensaje': 'Bajo contraste'};
-    }
-
-    return {'aprobado': true, 'mensaje': 'OK'};
-  }
-
-  Map<String, dynamic> _validarEnfoque(img.Image imagen) {
-    final grayscale = img.grayscale(imagen);
-
-    double sumaVariacion = 0;
-    int muestras = 0;
-
-    for (int y = 0; y < grayscale.height; y += 10) {
-      for (int x = 0; x < grayscale.width; x += 10) {
-        if (x > 0 && y > 0) {
-          final pixelActual = grayscale.getPixel(x, y);
-          final pixelIzq = grayscale.getPixel(x - 1, y);
-          final pixelArriba = grayscale.getPixel(x, y - 1);
-
-          final lumActual = img.getLuminance(pixelActual);
-          final lumIzq = img.getLuminance(pixelIzq);
-          final lumArriba = img.getLuminance(pixelArriba);
-
-          sumaVariacion += (lumActual - lumIzq).abs() + (lumActual - lumArriba).abs();
-          muestras += 2;
-        }
-      }
-    }
-
-    final variacionPromedio = muestras > 0 ? sumaVariacion / muestras : 0;
-
-    if (variacionPromedio < 5) {
-      return {'aprobado': false, 'mensaje': 'Imagen desenfocada (borrosa)'};
     }
 
     return {'aprobado': true, 'mensaje': 'OK'};
@@ -397,102 +323,6 @@ class ServicioProcesamientoImagen {
     return 0.0;
   }
 
-  Uint8List? _corregirPerspectiva(img.Image imagen, double angulo) {
-    try {
-      img.Image rotada = imagen;
-
-      if (angulo.abs() > 0.5) {
-        rotada = img.copyRotate(imagen, angle: angulo);
-      }
-
-      final bordes = _detectarBordesHorizontales(rotada);
-      if (bordes != null) {
-        final recortada = img.copyCrop(
-          rotada,
-          x: bordes.$1,
-          y: bordes.$2,
-          width: bordes.$3 - bordes.$1,
-          height: bordes.$4 - bordes.$2,
-        );
-        return Uint8List.fromList(img.encodeJpg(recortada, quality: 90));
-      }
-
-      return Uint8List.fromList(img.encodeJpg(rotada, quality: 90));
-    } catch (e) {
-      return null;
-    }
-  }
-
-  (int, int, int, int)? _detectarBordesHorizontales(img.Image imagen) {
-    final grayscale = img.grayscale(imagen);
-    final width = grayscale.width;
-    final height = grayscale.height;
-
-    int bordeSuperior = 0;
-    int bordeInferior = height;
-    int bordeIzquierdo = 0;
-    int bordeDerecho = width;
-
-    bool encontradoSuperior = false;
-    for (int y = 0; y < height ~/ 3; y++) {
-      int pixelesOscuros = 0;
-      for (int x = 0; x < width; x++) {
-        final lum = img.getLuminance(grayscale.getPixel(x, y));
-        if (lum < 80) pixelesOscuros++;
-      }
-      if (pixelesOscuros > width * 0.1) {
-        bordeSuperior = math.max(0, y - 20);
-        encontradoSuperior = true;
-        break;
-      }
-    }
-
-    if (!encontradoSuperior) return null;
-
-    for (int y = height - 1; y > height * 2 ~/ 3; y--) {
-      int pixelesOscuros = 0;
-      for (int x = 0; x < width; x++) {
-        final lum = img.getLuminance(grayscale.getPixel(x, y));
-        if (lum < 80) pixelesOscuros++;
-      }
-      if (pixelesOscuros > width * 0.1) {
-        bordeInferior = math.min(height, y + 20);
-        break;
-      }
-    }
-
-    for (int x = 0; x < width ~/ 3; x++) {
-      int pixelesOscuros = 0;
-      for (int y = bordeSuperior; y < bordeInferior; y++) {
-        final lum = img.getLuminance(grayscale.getPixel(x, y));
-        if (lum < 80) pixelesOscuros++;
-      }
-      if (pixelesOscuros > (bordeInferior - bordeSuperior) * 0.1) {
-        bordeIzquierdo = math.max(0, x - 20);
-        break;
-      }
-    }
-
-    for (int x = width - 1; x > width * 2 ~/ 3; x--) {
-      int pixelesOscuros = 0;
-      for (int y = bordeSuperior; y < bordeInferior; y++) {
-        final lum = img.getLuminance(grayscale.getPixel(x, y));
-        if (lum < 80) pixelesOscuros++;
-      }
-      if (pixelesOscuros > (bordeInferior - bordeSuperior) * 0.1) {
-        bordeDerecho = math.min(width, x + 20);
-        break;
-      }
-    }
-
-    if (bordeInferior - bordeSuperior < height * 0.5 ||
-        bordeDerecho - bordeIzquierdo < width * 0.5) {
-      return null;
-    }
-
-    return (bordeIzquierdo, bordeSuperior, bordeDerecho, bordeInferior);
-  }
-
   Future<ResultadoProcesamiento> detectarMarcadoresSimple(String rutaImagen) async {
     try {
       final archivo = File(rutaImagen);
@@ -512,7 +342,8 @@ class ServicioProcesamientoImagen {
         );
       }
 
-      final marcadores = _detectarMarcadores(imagen);
+      final imagenDeteccion = img.contrast(img.grayscale(imagen.clone()), contrast: 1.5);
+      final marcadores = _detectarMarcadores(imagenDeteccion);
 
       return ResultadoProcesamiento(
         exito: marcadores.length == 4,
