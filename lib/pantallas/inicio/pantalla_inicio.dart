@@ -32,7 +32,7 @@ class PantallaInicio extends StatelessWidget {
             const SizedBox(height: 40),
             ElevatedButton.icon(
               onPressed: () {
-                // Navegación se implementará en pasos futuros
+                Navigator.pushNamed(context, '/area'); // Navegación a la pantalla de selección de área
               },
               icon: const Icon(Icons.play_arrow),
               label: const Text('Iniciar corrección'),

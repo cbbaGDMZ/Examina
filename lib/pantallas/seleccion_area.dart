@@ -18,6 +18,10 @@ class _SeleccionAreaState extends State<SeleccionArea> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+       appBar: AppBar(
+        title: const Text('pantalla inicio'),
+        centerTitle: true,
+      ),
       body: Column(
         children: [
           Expanded(
@@ -83,18 +87,23 @@ class _SeleccionAreaState extends State<SeleccionArea> {
             child: SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () {
-                  // Navegación se implementará en pasos futuros
-                },
+                onPressed: _opcionSeleccionada == null
+                    ? null
+                    : () {
+                        Navigator.pushNamed(context, '/puntaje');
+                      },
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
+                  backgroundColor: _opcionSeleccionada != null 
+                      ? Colors.deepPurpleAccent 
+                      : Colors.grey.shade800,
                 ),
                 child: const Text(
                   'Continuar',
-                  style: TextStyle(fontSize: 18),
+                  style: TextStyle(fontSize: 18, color: Colors.white),
                 ),
               ),
             ),

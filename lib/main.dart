@@ -3,6 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'pantallas/inicio/pantalla_inicio.dart';
 import 'pantallas/seleccion_area.dart';
+import 'pantallas/puntaje.dart';
+import 'pantallas/puntaje_fijo.dart';
+import 'pantallas/puntaje_variado.dart';
+
+import 'pantallas/escaneo.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -29,12 +34,15 @@ class ExaminApp extends StatelessWidget {
         useMaterial3: true,
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
-      // Configuración de idioma (simplificada para este paso)
       locale: const Locale('es', 'ES'),
-      initialRoute: '/area',
+      initialRoute: '/inicio',
       routes: {
         '/inicio': (context) => const PantallaInicio(),
         '/area': (context) => const SeleccionArea(),
+        '/puntaje': (context) => const PantallaPuntaje(),
+        '/puntaje_fijo': (context) => const PantallaPuntajeFijo(),
+        '/puntaje_variado': (context) => const PantallaPuntajeVariado(),
+        '/escaneo': (context) => const PantallaEscaneo(),
       },
     );
   }
